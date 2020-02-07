@@ -1,0 +1,147 @@
+---
+title: "Homework 2"
+author: "Yaqoob, Ali"
+date: February 6, 2020
+output: github_document
+---
+
+# Ridge Regression
+
+## Relevant libraries
+```{r}
+library('ElemStatLearn')  ## for 'prostate'
+library('splines')        ## for 'bs'
+library('dplyr')          ## for 'select', 'filter', and others
+library('magrittr')       ## for '%<>%' operator (pipe assignment: pipe and then assign output back)
+library('glmnet')         ## for 'glmnet'
+```
+```{r}
+packages <- function(pkg){
+    new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+    if (length(new.pkg))
+        install.packages(new.pkg, dependencies = TRUE, repos='https://cran.rstudio.com/')
+    sapply(pkg, require, character.only = TRUE)
+}
+
+packages(c('ElemStatLearn'))
+```
+
+## Relevant dataset
+```{r}
+data('prostate')
+```
+
+
+## Split prostate into testing and training subsets
+```{r}
+prostate_train <- prostate %>%
+  filter(train == TRUE) %>% 
+  select(-train)
+
+summary(prostate_train)
+
+prostate_test <- prostate %>%
+  filter(train == FALSE) %>% 
+  select(-train)
+```
+
+## Predicting lpsa considering all other predictors
+```{r}
+fit <- lm(lpsa ~ ., data=prostate_train)
+```
+
+```{r}
+summary(fit)
+coef(fit)
+residuals(fit)
+```
+
+
+## Functions to compute testing/training error w/lm
+```{r}
+L2_loss <- function(y, yhat)
+  (y-yhat)^2
+error <- function(dat, fit, loss=L2_loss)
+  mean(loss(dat$lpsa, predict(fit, newdata=dat)))
+```
+
+## Training and testing error
+```{r}
+## train_error 
+error(prostate_train, fit)
+
+## testing error
+error(prostate_test, fit)
+```
+
+## Use glmnet to fit Ridge
+```{r}
+form  <- lpsa ~ 0 + lweight + age + lbph + lcp + pgg45 + lcavol + svi + gleason
+x_inp <- model.matrix(form, data=prostate_train)
+y_out <- prostate_train$lpsa
+fit <- glmnet(x=x_inp, y=y_out, lambda=seq(0.5, 0, -0.05), alpha = 0)
+print(fit$beta)
+```
+
+```{r}
+error <- function(dat, fit, lam, form, loss=L2_loss) {
+  x_inp <- model.matrix(form, data=dat)
+  y_out <- dat$lpsa
+  y_hat <- predict(fit, newx=x_inp, s=lam)  ## see predict.elnet
+  mean(loss(y_out, y_hat))
+}
+```
+
+
+```{r}
+## train_error at lambda=0
+error(prostate_train, fit, lam=0, form=form)
+
+## testing error at lambda=0
+error(prostate_test, fit, lam=0, form=form)
+
+## train_error at lambda=0.03
+error(prostate_train, fit, lam=0.05, form=form)
+
+## testing error at lambda=0.03
+error(prostate_test, fit, lam=0.05, form=form)
+```
+
+## Path Diagram
+```{r}
+
+## plot path diagram
+plot(x=range(fit$lambda),
+     y=range(as.matrix(fit$beta)),
+     type='n',
+     xlab=expression(lambda),
+     ylab='Coefficients')
+for(i in 1:nrow(fit$beta)) {
+  points(x=fit$lambda, y=fit$beta[i,], pch=19, col='#00000055')
+  lines(x=fit$lambda, y=fit$beta[i,], col='#00000055')
+}
+abline(h=0, lty=3, lwd=2)
+
+```
+
+## Compute training and testing errors as function of lambda
+```{r}
+err_train_1 <- sapply(fit$lambda, function(lam) 
+  error(prostate_train, fit, lam, form))
+err_test_1 <- sapply(fit$lambda, function(lam) 
+  error(prostate_test, fit, lam, form))
+```
+
+## Plot test/train error
+```{r}
+plot(x=range(fit$lambda),
+     y=range(c(err_train_1, err_test_1)),
+     type='n',
+     xlab=expression(lambda),
+     ylab='train/test error')
+points(fit$lambda, err_train_1, pch=19, type='b', col='darkblue')
+points(fit$lambda, err_test_1, pch=19, type='b', col='darkred')
+legend('topleft', c('train','test'), lty=1, pch=19,
+       col=c('darkblue','darkred'), bty='n')
+```
+
