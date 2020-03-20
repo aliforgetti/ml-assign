@@ -11,6 +11,7 @@ library('manipulate') ## for 'manipulate'
 
 1. Randomly split the mcycle data into training (75%) and validation (25%) subsets.
 ```{r}
+set.seed(42)
 data <- mcycle
 sample <- sample.int(n = nrow(data), size = floor(.75*nrow(data)), replace = F)
 train <- data[sample, ]
@@ -182,9 +183,9 @@ for(i in 1:length(training_error)){
 }
 kvals = floor(seq(1,98,length.out = ksize))
 par(xpd = T)
-plot(x =kvals,y=training_error, ylab = "Error", xlab = "K Values",type = 'l', ylim = c(0,4000), col = "red")
+plot(x =kvals,y=training_error, ylab = "Error", xlab = "K Values",type = 'l', ylim = c(0,3500), col = "red")
 lines(x = kvals, y = validation_error, col = "blue", lty = 2)
-legend(1, 3900, legend=c("Training Error", "Validation Error"),
+legend(1, 2500, legend=c("Training Error", "Validation Error"),
        col=c("red", "blue"), lty=1:2, cex=0.8)
 
 ```
@@ -227,6 +228,8 @@ Each column in cv_test_error represents one k value (tuning parameter) and the f
 
 5. Plot the CV-estimated test error (average of the five estimates from each fold) as a function of the tuning parameter. Add vertical line segments to the figure (using the segments function in R) that represent one “standard error” of the CV-estimated test error (standard deviation of the five estimates from each fold).
 
+
+
 6. Interpret the resulting figures and select a suitable value for the tuning parameter. 
 
 ```{r}
@@ -239,15 +242,15 @@ segments(x0=kvals, x1=kvals,
          y0=cv_mean - cv_sd,
          y1=cv_mean + cv_sd)
 best_idx <- which.min(cv_mean)
-points(x=best_idx, y=cv_mean[best_idx], pch=20)
+
 abline(h=cv_mean[best_idx] + cv_sd[best_idx], lty=3)
 ```
 
-As we increase the value of k, the model tends moves towards lower variance. 
+As we increase the value of k, the model tends moves towards lower variance. Cross validation is not an optimistic measure of test error, therefore our plot looks a lot closer to the actual validation error in this case. 
 
 ```{r}
 optimal <- cv_mean[best_idx] + cv_sd[best_idx]
 kvals[which(abs(cv_mean - optimal) == min(abs(cv_mean - optimal)))]
 
 ```
-This is the best tuning parameter value as it one standard deviation of the lowest test error rate. 
+This is the best tuning parameter value as it is one standard deviation of the lowest test error value. 
