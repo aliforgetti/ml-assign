@@ -9,8 +9,6 @@ January 22, 2020
 library('ElemStatLearn')
 ```
 
-    ## Warning: package 'ElemStatLearn' was built under R version 3.6.2
-
 ## Loading Data
 
 ``` r
@@ -38,7 +36,9 @@ plot_psa_data()
 
 ![](homework_01_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
 
-## Loss functions defined
+# Setup
+
+## Loss Functions Defined
 
 ``` r
 ## L2 loss function
@@ -48,159 +48,151 @@ L2 <- function(y, yhat)
 ## L1 loss function
 L1 <- function(y, yhat)
   abs(y-yhat)
-```
 
-## fit simple linear model using numerical optimization
+## Tilted Loss with tau value as 0.25
+TL_1 <- function(y,yhat,tau=0.25){
+  ifelse((y-yhat)>0,(tau*(y-yhat)),(tau-1)*(y-yhat))
+}
 
-``` r
-fit_lin <- function(y, x, loss, beta_init = c(-0.51, 0.75), beta_init_2 = c(-1.0, 0.0, -0.3), tau=0.5) {
-  
-  if(loss == 'L1'){
-    loss <- get(loss)
-    err <- function(beta)
-      quantile(loss(y,  beta[1] + beta[2]*x), tau)
-    beta <- optim(par = beta_init, fn = err) 
-    # optimizes the beta value by minimizes the 
-    return(beta)
-  }
-  
-  if(loss == 'L2'){
-    loss <- get(loss)
-    err <- function(beta)
-      mean(loss(y,  beta[1] + beta[2]*x))
-    beta <- optim(par = beta_init, fn = err) 
-    # optimizes the beta value by minimizes the 
-    return(beta)
-  }
-  
-  if(loss == 'L1_N'){
-    loss <- L1
-    err <- function(beta)
-      quantile(loss(y,  beta[1] + beta[2]*exp(-beta[3]*x)), tau)
-    beta <- optim(par = beta_init_2, fn = err) 
-    # optimizes the beta value by minimizes the 
-    return(beta)
-  }
-  
-  if(loss == 'L2_N'){
-    loss <- L2
-    err <- function(beta)
-      mean(loss(y,  beta[1] + beta[2]*exp(-beta[3]*x)))
-    beta <- optim(par = beta_init_2, fn = err) 
-    # optimizes the beta value by minimizes the 
-    return(beta)
-  }
-  
+## Tilted Loss with tau value as 0.75
+TL_2 <- function(y,yhat,tau=0.75){
+  ifelse((y-yhat)>0,(tau*(y-yhat)),(tau-1)*(y-yhat))
 }
 ```
 
-## make predictions from linear model
+## Linear Model
 
 ``` r
-predict_lin <- function(x, beta)
-  beta[1] + beta[2]*x
-
-predict_lin_2 <- function(x, beta)
-  beta[1] + beta[2]*exp(-beta[3]*x)
+## fit simple linear model using numerical optimization
+fit_lin <- function(y, x, loss=L1_loss, beta_init = c(-0.51, 0.75)) {
+  err <- function(beta)
+    mean(loss(y,  beta[1] + beta[2]*x))
+  beta <- optim(par = beta_init, fn = err)
+  return(beta)
+}
 ```
 
-## fit L1 linear model
+## Non Linear Model
+
+``` r
+fit_non_lin <- function(y, x, loss=L1_loss, beta_init = c(-1.0, 0.0, -0.3)) {
+  err <- function(beta)
+    mean(loss(y, beta[1] + beta[2]*exp(-beta[3]*x)))
+  beta <- optim(par = beta_init, fn = err)
+  return(beta)
+}
+```
+
+# Fitting the Linear Models
 
 ``` r
 lin_beta_L1 <- fit_lin(y=prostate_train$lcavol,
                     x=prostate_train$lpsa,
-                    loss='L1')
+                    loss=L1)
 
 lin_beta_L2 <- fit_lin(y=prostate_train$lcavol,
                     x=prostate_train$lpsa,
-                    loss='L2')
+                    loss=L2)
 
-lin_beta_L1_1 <- fit_lin(y=prostate_train$lcavol,
+lin_beta_TL_1 <- fit_lin(y=prostate_train$lcavol,
                     x=prostate_train$lpsa,
-                    loss='L1', tau = 0.25)
+                    loss=TL_1)
 
-lin_beta_L1_2 <- fit_lin(y=prostate_train$lcavol,
+lin_beta_TL_2 <- fit_lin(y=prostate_train$lcavol,
                     x=prostate_train$lpsa,
-                    loss='L1', tau = 0.75)
-
-lin_beta_L1_N <- fit_lin(y=prostate_train$lcavol,
-                    x=prostate_train$lpsa,
-                    loss='L1_N')
-
-lin_beta_L2_N <- fit_lin(y=prostate_train$lcavol,
-                    x=prostate_train$lpsa,
-                    loss='L2_N')
-
-lin_beta_L1_N1 <- fit_lin(y=prostate_train$lcavol,
-                    x=prostate_train$lpsa,
-                    loss='L1_N', tau = 0.25)
-
-lin_beta_L1_N2 <- fit_lin(y=prostate_train$lcavol,
-                    x=prostate_train$lpsa,
-                    loss='L1_N', tau = 0.75)
+                    loss=TL_2)
 ```
 
-## compute predictions for a grid of inputs
+## Make Predictions From the Betas Created By The Linear Models
+
+``` r
+predict_lin <- function(x, beta)
+  beta[1] + beta[2]*x
+```
 
 ``` r
 x_grid <- seq(min(prostate_train$lpsa),
               max(prostate_train$lpsa),
-              length.out=100)
-#Linear
-lin_pred_1 <- predict_lin(x=x_grid, beta=lin_beta_L1$par)
-lin_pred_2 <- predict_lin(x=x_grid, beta=lin_beta_L2$par)
-lin_pred_3 <- predict_lin(x=x_grid, beta=lin_beta_L1_1$par)
-lin_pred_4 <- predict_lin(x=x_grid, beta=lin_beta_L1_2$par)
+              length.out=100000)
 
-#Non Linear
-lin_pred_5 <- predict_lin_2(x=x_grid, beta=lin_beta_L1_N$par)
-lin_pred_6 <- predict_lin_2(x=x_grid, beta=lin_beta_L2_N$par)
-lin_pred_7 <- predict_lin_2(x=x_grid, beta=lin_beta_L1_N1$par)
-lin_pred_8 <- predict_lin_2(x=x_grid, beta=lin_beta_L1_N2$par)
+lin_pred_L1 <- predict_lin(x=x_grid, beta=lin_beta_L1$par)
+
+lin_pred_L2 <- predict_lin(x=x_grid, beta=lin_beta_L2$par)
+
+lin_pred_TL_1 <- predict_lin(x=x_grid, beta=lin_beta_TL_1$par)
+
+lin_pred_TL_2 <- predict_lin(x=x_grid, beta=lin_beta_TL_2$par)
 ```
-
-## Plotting the data
 
 ``` r
-par(mfrow=c(1,2))
-
 ## plot data
 plot_psa_data()
-## plot predictions
-lines(x=x_grid, y=lin_pred_1, col ='blue')
-lines(x=x_grid, y=lin_pred_2, col ='red')
-lines(x=x_grid, y=lin_pred_3, col ='grey')
-lines(x=x_grid, y=lin_pred_4, col ='black')
-title('Linear Model')
-legend(x=3.75,y =0,
-       legend = c("L1", "L2","tau = 25","tau = 75"),
-       col=c("blue","red","grey","black"),
-       pch = c(17,19),
-       bty = "n",
-       pt.cex = 0.75,
-       cex = 0.75,
-       text.col = "black",
-       horiz = F ,
-       inset = c(0.1, 0.1))
 
-## plot data
-plot_psa_data()
 ## plot predictions
-lines(x=x_grid, y=lin_pred_5, col ='blue')
-lines(x=x_grid, y=lin_pred_6, col ='red')
-lines(x=x_grid, y=lin_pred_7, col ='grey')
-lines(x=x_grid, y=lin_pred_8, col ='black')
-title('Non-Linear Model')
-legend(x=3.75,y =0,
-       legend = c("L1", "L2","tau = 25","tau = 75"),
-       col=c("blue","red","grey","black"),
-       pch = c(17,19),
-       bty = "n",
-       pt.cex = 0.75,
-       cex = 0.75,
-       text.col = "black",
-       horiz = F ,
-       inset = c(0.1, 0.1))
+lines(x=x_grid, y=lin_pred_L1,col='blue')
+lines(x=x_grid, y=lin_pred_L2,col='orange')
+lines(x=x_grid, y=lin_pred_TL_1,col='red')
+lines(x=x_grid, y=lin_pred_TL_2,col='grey')
+legend(3.75,1,legend = c("L1_Pred","L2_Pred","Tau = 0.25","Tau = 0.75"),
+                lty = c(1,1,1,1),
+                         col = c("blue","orange","red","grey" ))
 ```
 
-![](homework_01_files/figure-gfm/unnamed-chunk-10-1.png)<!-- --> \`\`\`
+![](homework_01_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+
+# Fitting the Non-Linear Models
+
+``` r
+lin_beta_L1 <- fit_non_lin(y=prostate_train$lcavol,
+                    x=prostate_train$lpsa,
+                    loss=L1)
+
+lin_beta_L2 <- fit_non_lin(y=prostate_train$lcavol,
+                    x=prostate_train$lpsa,
+                    loss=L2)
+
+lin_beta_TL_1 <- fit_non_lin(y=prostate_train$lcavol,
+                    x=prostate_train$lpsa,
+                    loss=TL_1)
+
+lin_beta_TL_2 <- fit_non_lin(y=prostate_train$lcavol,
+                    x=prostate_train$lpsa,
+                    loss=TL_2)
+```
+
+## Make Predictions From the Betas Created By The Non Linear Models
+
+``` r
+predict_lin <- function(x, beta)
+  beta[1] + beta[2]*exp(-beta[3]*x)
+```
+
+``` r
+x_grid <- seq(min(prostate_train$lpsa),
+              max(prostate_train$lpsa),
+              length.out=100000)
+
+lin_pred_L1 <- predict_lin(x=x_grid, beta=lin_beta_L1$par)
+
+lin_pred_L2 <- predict_lin(x=x_grid, beta=lin_beta_L2$par)
+
+lin_pred_TL_1 <- predict_lin(x=x_grid, beta=lin_beta_TL_1$par)
+
+lin_pred_TL_2 <- predict_lin(x=x_grid, beta=lin_beta_TL_2$par)
+```
+
+``` r
+## plot data
+plot_psa_data()
+
+## plot predictions
+lines(x=x_grid, y=lin_pred_L1,col='blue')
+lines(x=x_grid, y=lin_pred_L2,col='orange')
+lines(x=x_grid, y=lin_pred_TL_1,col='red')
+lines(x=x_grid, y=lin_pred_TL_2,col='grey')
+legend(3.75,1,legend = c("L1_Pred","L2_Pred","Tau = 0.25","Tau = 0.75"),
+                lty = c(1,1,1,1),
+                         col = c("blue","orange","red","grey" ))
+```
+
+![](homework_01_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
