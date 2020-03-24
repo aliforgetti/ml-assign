@@ -91,6 +91,24 @@ prostate_test <- prostate %>%
   select(-train)
 ```
 
+## Correlation Matrix
+
+``` r
+pro_cor <- cor(prostate[1:8])
+pro_cor[upper.tri(pro_cor,diag=TRUE)] = 0 
+round(pro_cor,3)
+```
+
+    ##         lcavol lweight   age   lbph   svi   lcp gleason pgg45
+    ## lcavol   0.000   0.000 0.000  0.000 0.000 0.000   0.000     0
+    ## lweight  0.281   0.000 0.000  0.000 0.000 0.000   0.000     0
+    ## age      0.225   0.348 0.000  0.000 0.000 0.000   0.000     0
+    ## lbph     0.027   0.442 0.350  0.000 0.000 0.000   0.000     0
+    ## svi      0.539   0.155 0.118 -0.086 0.000 0.000   0.000     0
+    ## lcp      0.675   0.165 0.128 -0.007 0.673 0.000   0.000     0
+    ## gleason  0.432   0.057 0.269  0.078 0.320 0.515   0.000     0
+    ## pgg45    0.434   0.107 0.276  0.078 0.458 0.632   0.752     0
+
 ## Predicting lpsa considering all other predictors
 
 ``` r
@@ -289,7 +307,7 @@ for(i in 1:nrow(fit$beta)) {
 abline(h=0, lty=3, lwd=2)
 ```
 
-![](homework_02_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+![](homework_02_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
 ## Compute training and testing errors as function of lambda
 
@@ -314,4 +332,4 @@ legend('topleft', c('train','test'), lty=1, pch=19,
        col=c('darkblue','darkred'), bty='n')
 ```
 
-![](homework_02_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+![](homework_02_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->

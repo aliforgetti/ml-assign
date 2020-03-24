@@ -44,6 +44,14 @@ prostate_test <- prostate %>%
   filter(train == FALSE) %>% 
   select(-train)
 ```
+## Correlation Matrix
+
+```{r}
+pro_cor <- cor(prostate[1:8])
+pro_cor[upper.tri(pro_cor,diag=TRUE)] = 0 
+round(pro_cor,3)
+```
+
 
 ## Predicting lpsa considering all other predictors
 ```{r}
