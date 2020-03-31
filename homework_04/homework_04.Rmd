@@ -1,0 +1,129 @@
+---
+title: "Homework 4"
+author: "Yaqoob, Ali"
+date: March 31, 2020
+output: github_document
+---
+
+```{r load libraries, message=FALSE, warning=FALSE}
+library(ElemStatLearn)
+library(randomForest)
+library(tidyverse)
+library(caret)
+```
+
+```{r load data}
+data(vowel.train)
+data(vowel.test)
+```
+
+```{r}
+head(vowel.train)
+```
+
+```{r}
+head(vowel.test)
+```
+1. Convert the response variable in the “vowel.train” data frame to a factor variable prior to training, so that “randomForest” does classification rather than regression.
+```{r convert output to factor}
+vowel.train$y <- as.factor(vowel.train$y)
+vowel.test$y <- as.factor(vowel.test$y) 
+```
+
+2. Review the documentation for the “randomForest” function.
+3. Fit the random forest model to the vowel data using all of the 11 features using the default values of the tuning parameters.
+```{r fitting the random}
+vowel_rf <- randomForest(y ~., data = vowel.train)
+```
+
+```{r plot of the error}
+plot(vowel_rf)
+```
+4. Use 5-fold CV and tune the model by performing a grid search for the following tuning parameters: 
+1) the number of variables randomly sampled as candidates at each split; consider values 3, 4, and 5, and 
+2) the minimum size of terminal nodes; consider a sequence (1, 5, 10, 20, 40, and 80).
+
+```{r}
+
+```
+
+
+```{r}
+#misclassification function
+error <- function(true, pred) {
+  mean(true != pred, na.rm = T)
+}
+
+#tuning values
+mtry <- c(3,4,5)
+nodesize <- c(1,5,10, 40, 80)
+
+params <- expand.grid(mtry = mtry,nodesize = nodesize)
+
+n_folds <- 5
+
+# create folds, stratified on the output, y
+folds_i <- createFolds(factor(vowel.train$y), k = n_folds, list = F)
+
+cv_ms_error <- matrix(nrow = n_folds, ncol = nrow(params))
+
+
+for(j in 1:nrow(params)){
+  
+  for(i in 1:n_folds){
+    train_ind <- which(folds_i != i)
+    test_ind <- which(folds_i == i)
+    train_k <- vowel.train[train_ind,]
+    test_k <- vowel.test[test_ind,]
+    
+    rf_tune <- randomForest(y ~., 
+                            data = train_k, 
+                            xtest = na.omit(test_k[-1]), 
+                            ytest = na.omit(test_k$y),
+                            mtry = params[j,][[1]],
+                            nodesize = params[j,][[2]])
+    
+    cv_ms_error[i,j] <- error(as.vector(na.omit(test_k$y)), rf_tune$test$predicted)
+    
+  }
+}
+
+cv_ms_error
+mean_cv <- colMeans(cv_ms_error)
+mean_cv
+```
+
+5. With the tuned model, make predictions using the majority vote method, and compute the misclassification rate using the ‘vowel.test’ data.
+
+```{r}
+best_index <- which(mean_cv == min(mean_cv))[1]
+params[best_index,]
+```
+These are the best tuning parameters with the lowest misclassification rate.
+
+
+```{r}
+# final model tunned
+rf_tune <- randomForest(y ~., 
+                        data = train_k, 
+                        xtest = na.omit(vowel.test[-1]), 
+                        ytest = na.omit(vowel.test$y),
+                        mtry = params[best_index,][[1]],
+                        nodesize = params[best_index,][[2]])
+```
+
+
+```{r}
+# true value
+y <- as.double(as.vector(vowel.test$y))
+# predicted value from the model
+y_hat <- as.double(as.vector(rf_tune$test$predicted))
+
+error(y,y_hat) # misclassification rate of the final model tuned with the best parameters
+```
+
+
+
+
+
+
